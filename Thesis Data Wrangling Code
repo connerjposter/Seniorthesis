@@ -1,0 +1,106 @@
+#Histograms
+
+#STAI
+hist(Thesis_Final$STAI, breaks = "Sturges", main = "STAI_Scores", xlab = "STAI", ylab = "Frequency", col = "Green")
+
+#MASQ_GDA
+hist(Thesis_Final$MASQ_GDA, breaks = "Sturges", main = "MASQ_GDA_Scores", xlab = "MASQ_GDA", ylab = "Frequency", col = "Green")
+
+
+#MASQ_AA
+hist(Thesis_Final$MASQ_AA, breaks = "Sturges", main = "MASQ_AA_Scores", xlab = "MASQ_AA", ylab = "Frequency", col = "Green")
+
+
+
+#Corrugator
+hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
+hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
+hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
+
+
+# Calculate min, max, and mean for P5Age
+min_P5Age <- min(Thesis_Final$P5Age, na.rm = TRUE)
+max_P5Age <- max(Thesis_Final$P5Age, na.rm = TRUE)
+mean_P5Age <- mean(Thesis_Final$P5Age, na.rm = TRUE)
+
+# Print the results
+cat("Min P5Age:", min_P5Age, "\n")
+cat("Max P5Age:", max_P5Age, "\n")
+cat("Mean P5Age:", mean_P5Age, "\n")
+
+
+
+
+hist(Thesis_Final$COR_Neu_React, breaks = "Sturges", main = "COR_Neu_React", xlab = "Cor", ylab = "Frequency", col = "Green")
+hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Step 1: Filter data to include only individuals with non-missing COR_QA
+data_with_COR_QA <- Thesis_Final %>% filter(!is.na(COR_QA))
+
+# Step 2: Filter further to include only males (Sex == 1)
+males_with_COR_QA <- data_with_COR_QA %>% filter(Sex == 1)
+
+# Step 3: Calculate the total number of individuals with non-missing COR_QA
+total_with_COR_QA <- nrow(data_with_COR_QA)
+
+# Step 4: Calculate the number of males with non-missing COR_QA
+total_males_with_COR_QA <- nrow(males_with_COR_QA)
+
+# Step 5: Calculate the percentage of males with non-missing COR_QA
+percentage_males_with_COR_QA <- (total_males_with_COR_QA / total_with_COR_QA) * 100
+
+# Print the result
+percentage_males_with_COR_QA
+
+
+# Step 1: Filter data to include only individuals with non-missing COR_QA
+data_with_COR_QA <- Thesis_Final %>% filter(!is.na(COR_QA))
+
+# Step 2: Filter data for BIPOC individuals (Race == 0)
+bipoc_with_COR_QA <- data_with_COR_QA %>% filter(Race == 0)
+
+# Step 3: Calculate the total number of individuals with non-missing COR_QA
+total_with_COR_QA <- nrow(data_with_COR_QA)
+
+# Step 4: Calculate the number of BIPOC individuals with non-missing COR_QA
+total_bipoc_with_COR_QA <- nrow(bipoc_with_COR_QA)
+
+# Step 5: Calculate the percentage of BIPOC individuals with non-missing COR_QA
+percentage_bipoc_with_COR_QA <- (total_bipoc_with_COR_QA / total_with_COR_QA) * 100
+
+# Print the result
+percentage_bipoc_with_COR_QA
+
+
+
+# Filter for participants who have values for COR_QA
+COR_QA_data <- Thesis_Final %>% 
+  filter(!is.na(COR_QA))
+
+# Calculate range, average, and SD for P5Age
+age_range <- range(COR_QA_data$P5Age, na.rm = TRUE)
+age_mean <- mean(COR_QA_data$P5Age, na.rm = TRUE)
+age_sd <- sd(COR_QA_data$P5Age, na.rm = TRUE)
+min_age <- min(COR_QA_data$P5Age, na.rm = TRUE)
+max_age <- max(COR_QA_data$P5Age, na.rm = TRUE)
+
+# Output the results
+age_range
+age_mean
+age_sd
+min_age
+max_age
+
+
