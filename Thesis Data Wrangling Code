@@ -1,106 +1,231 @@
-#Histograms
+# Load Packages
+library(tidyverse)
 
-#STAI
-hist(Thesis_Final$STAI, breaks = "Sturges", main = "STAI_Scores", xlab = "STAI", ylab = "Frequency", col = "Green")
-
-#MASQ_GDA
-hist(Thesis_Final$MASQ_GDA, breaks = "Sturges", main = "MASQ_GDA_Scores", xlab = "MASQ_GDA", ylab = "Frequency", col = "Green")
-
-
-#MASQ_AA
-hist(Thesis_Final$MASQ_AA, breaks = "Sturges", main = "MASQ_AA_Scores", xlab = "MASQ_AA", ylab = "Frequency", col = "Green")
+# Load data
+Thesis1 <- read.csv("Thesis 1.csv")
+load("22840-0001-Data-REST.rda")
+load("36722-0001-Data-REST.rda")
+MKEM2 <- da22840.0001
+MKEMR <- da36722.0001
 
 
 
-#Corrugator
-hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
-hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
-hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
-
-
-# Calculate min, max, and mean for P5Age
-min_P5Age <- min(Thesis_Final$P5Age, na.rm = TRUE)
-max_P5Age <- max(Thesis_Final$P5Age, na.rm = TRUE)
-mean_P5Age <- mean(Thesis_Final$P5Age, na.rm = TRUE)
-
-# Print the results
-cat("Min P5Age:", min_P5Age, "\n")
-cat("Max P5Age:", max_P5Age, "\n")
-cat("Mean P5Age:", mean_P5Age, "\n")
+# Merged Variables Thesis Final
+Thesis_Final <- data.frame(Thesis1$MIDUSID, Thesis1$SAMPLMAJ, ifelse(!is.na(Thesis1$B5CNE), Thesis1$B5CNE, Thesis1$RA5CNE))
 
 
 
+#Creating cohort variable, M2 = 1 MR = 2
+Thesis_Final$M2ID <- Thesis1$M2ID
+Thesis_Final$Cohort<-ifelse(!is.na(Thesis1$M2ID), 1, 2)
 
-hist(Thesis_Final$COR_Neu_React, breaks = "Sturges", main = "COR_Neu_React", xlab = "Cor", ylab = "Frequency", col = "Green")
-hist(Thesis_Final$COR_Neg_React, breaks = "Sturges", main = "COR_Neg_React", xlab = "Cor", ylab = "Frequency", col = "Green")
-
-
-
-
-
+#Add in FAMNUM
+Thesis_Final$M2FAMNUM <- Thesis1$M2FAMNUM
 
 
 
+#Merging age at Neuroscience Project (P5)
+Thesis_Final$P5Age<-ifelse(!is.na(Thesis1$RA5PAGE),Thesis1$RA5PAGE,Thesis1$B5PAGE)
+
+# Mean center P5Age using scale()
+Thesis_Final$P5Age_centered <- scale(Thesis_Final$P5Age, center = TRUE, scale = FALSE)
+
+# Calculate the median for Age
+P5Age_median <- median(Thesis_Final$P5Age, na.rm = TRUE)
+
+# Age Cutoff Binary
+Thesis_Final$P5Age_binary <- ifelse(Thesis_Final$P5Age < 53, 0, 1)
+
+
+
+#Merging education variables, 1 = no school/some grade school, 2 = 8th grade/junior high, 3 = some HS, 4 = GED, 5 = HS graduate, 6 = 1-2 years of college, no degree, 7 = 3+ years college, no degree, 8 = associate degree or other similar 2 yr equivalent, 9 = 4 year degree/bachelors, 10 =some grad school, 11 = masters, 12 = phd
+Thesis_Final$Education <- ifelse(!is.na(Thesis1$B1PB1), Thesis1$B1PB1, ifelse(!is.na(Thesis1$BACB1), Thesis1$BACB1, ifelse(!is.na(Thesis1$RA1PB1), Thesis1$RA1PB1, Thesis1$RAACB1)))
+
+# coding 97 as missing
+Thesis_Final$Education<-na_if(Thesis_Final$Education, 97)
+
+#Re-code Education into EDU, where -1 = HS or less, 0 = some college/tech school to 2 year degree, 1 = Bachelors and up post secondary degree
+Thesis_Final$EDU<- ifelse(Thesis_Final$Education <= 5, -1, ifelse(Thesis_Final$Education > 5 & Thesis_Final$Education <= 8, 0, 1))
+
+
+
+#Merging sex variable, 
+Thesis_Final$Sex <- as.factor(ifelse(!is.na(Thesis1$RA1PRSEX), Thesis1$RA1PRSEX, ifelse(!is.na(Thesis1$B1PRSEX), Thesis1$B1PRSEX, ifelse(!is.na(Thesis1$BACRSEX), Thesis1$BACRSEX, Thesis1$RAACRSEX))))
+
+# Recode Sex variable, 1= male 0 = female
+Thesis_Final$Sex <- ifelse(Thesis_Final$Sex == 2, 0, Thesis_Final$Sex)
+
+
+
+#Step 1:
+MKEMR <- MKEMR %>% 
+  mutate(MIDUSID = MRID)
+
+MKEM2 <- MKEM2 %>% 
+  mutate(MIDUSID = M2ID)
+
+# Step 2: Merge Thesis1 with MKEMR and MKEM2
+Thesis1 <- merge(Thesis1, MKEMR, by = "MIDUSID", all.x = TRUE)
+Thesis1 <- merge(Thesis1, MKEM2, by = "MIDUSID", all.x = TRUE)
+
+# Step 3: Create Race variable
+Race <- Thesis1 %>% 
+  mutate(
+    Race = as.factor(case_when(
+      B1PF7A == 1 ~ "White",
+      BACF7A.y == "(1) WHITE" ~ "White",
+      str_detect(BACF7A.y, "\\(2\\)|\\(3\\)|\\(4\\)|\\(5\\)|\\(6\\)") ~ "BIPOC",  # Check for (2) to (6)
+      str_detect(RAACF7A.y, "\\(2\\)|\\(3\\)|\\(4\\)|\\(5\\)|\\(6\\)") ~ "BIPOC",  # Check for (2) to (6)
+      RAACF7A.y == "(1) WHITE" ~ "White",
+      RA1PF7A == 1 ~ "White",
+      B1PF7A %in% 7:9 ~ NA_character_,
+      BACF7A.y %in% 7:9 ~ NA_character_,
+      RAACF7A.y %in% 7:9 ~ NA_character_,
+      RA1PF7A %in% 7:9 ~ NA_character_,
+      is.na(B1PF7A) ~ NA_character_,
+      is.na(BACF7A.y) ~ NA_character_,
+      is.na(RAACF7A.y) ~ NA_character_,
+      is.na(RA1PF7A) ~ NA_character_,
+      TRUE ~ "BIPOC"
+    )),
+    Thesis1.MIDUSID = MIDUSID
+  ) %>% 
+  select(Thesis1.MIDUSID, Race)
+
+# Step 4: Merge with Thesis_Final
+Thesis_Final <- merge(Thesis_Final, Race, by = "Thesis1.MIDUSID", all.x = TRUE)
+
+# Optional: Recode Race variable, 1= White 0 = Bipoc
+Thesis_Final$Race <- ifelse(Thesis_Final$Race == "White", 1,
+                            ifelse(Thesis_Final$Race == "BIPOC", 0, NA))
+
+
+
+
+#Merging Corrugator Variables
+Thesis_Final$COR_QA<-ifelse(!is.na(Thesis1$RA5C), Thesis1$RA5C, Thesis1$B5C)
+
+Thesis_Final$COR_Neg_React <- ifelse(!is.na(Thesis1$B5CNE), Thesis1$B5CNE, Thesis1$RA5CNE)
+Thesis_Final$COR_Neg_RecovEarly <- ifelse(!is.na(Thesis1$B5CNM), Thesis1$B5CNM, Thesis1$RA5CNM)
+Thesis_Final$COR_Neg_RecovLate <- ifelse(!is.na(Thesis1$B5CNL), Thesis1$B5CNL, Thesis1$RA5CNL)
+
+Thesis_Final$COR_Neu_React <- ifelse(!is.na(Thesis1$B5COE), Thesis1$B5COE, Thesis1$RA5COE)
+Thesis_Final$COR_Neu_RecovEarly <- ifelse(!is.na(Thesis1$B5COM), Thesis1$B5COM, Thesis1$RA5COM)
+Thesis_Final$COR_Neu_RecovLate <- ifelse(!is.na(Thesis1$B5COL), Thesis1$B5COL, Thesis1$RA5COL)
+
+Thesis_Final$COR_Pos_React <- ifelse(!is.na(Thesis1$B5CPE), Thesis1$B5CPE, Thesis1$RA5CPE)
+Thesis_Final$COR_Pos_RecovEarly <- ifelse(!is.na(Thesis1$B5CPM), Thesis1$B5CPM, Thesis1$RA5CPM)
+Thesis_Final$COR_Pos_RecovLate <- ifelse(!is.na(Thesis1$B5CPL), Thesis1$B5CPL, Thesis1$RA5CPL)
+
+
+
+#Merging Medication Variables
+Medication <-Thesis1 %>% 
+  mutate(
+    Medication = as.factor(case_when(
+      B4XTC_242 == 1 ~ "Yes",
+      RA4XTC_242 == 1 ~ "Yes",
+      B4XTCS_47 == 1 ~ "Yes",
+      RA4XTCS_47 == 1 ~ "Yes",
+      B4XTCS_249 == 1 ~ "Yes",
+      RA4XTCS_249 == 1 ~ "Yes",
+      B4XTC_242 %in% 8:9 ~ NA_character_,
+      RA4XTC_242 %in% 8:9 ~ NA_character_,
+      B4XTCS_47 %in% 8:9 ~ NA_character_,
+      RA4XTCS_47 %in% 8:9 ~ NA_character_,
+      B4XTCS_249 %in% 8:9 ~ NA_character_,
+      RA4XTCS_249 %in% 8:9 ~ NA_character_,
+      B4XTC_242 == 2 ~ "No",
+      RA4XTC_242 == 2 ~ "No",
+      B4XTCS_47 == 2 ~ "No",
+      RA4XTCS_47 == 2 ~ "No",
+      B4XTCS_249 == 2 ~ "No",
+      RA4XTCS_249 == 2 ~ "No",
+      TRUE ~ NA)),
+    Thesis1.MIDUSID = MIDUSID) %>% 
+  select(Thesis1.MIDUSID, Medication)
+
+Thesis_Final <- merge(Thesis_Final, Medication, by="Thesis1.MIDUSID")
+
+#Optional Recode Medication: Yes=1, No=0
+Thesis_Final$Medication <- ifelse(Thesis_Final$Medication == "Yes", 1,
+                                  ifelse(Thesis_Final$Medication == "No", 0, NA))
+
+
+#Merging STAI Anxiety Score
+Thesis_Final$STAI <- ifelse(!is.na(Thesis1$B5SST), Thesis1$B5SST, Thesis1$RA5SST)
+
+#Code 8 as Missing for STAI
+Thesis_Final$STAI<-na_if(Thesis_Final$STAI, 8)
+
+# Mean center STAI using scale
+Thesis_Final$STAI_centered <- scale(Thesis_Final$STAI, center = TRUE, scale = FALSE)
+
+# STAI Cutoff Binary ()
+Thesis_Final$STAI_binary_low <- ifelse(Thesis_Final$STAI < 2, 0, 
+                                   1)
+
+
+
+#Merging MASQ_GDA Anxiety Score
+Thesis_Final$MASQ_GDA <- ifelse(!is.na(Thesis1$B4QMA_A), Thesis1$B4QMA_A, Thesis1$RA4QMA_A)
+
+#Code 98 as Missing for MASQ_GDA
+Thesis_Final$MASQ_GDA<-na_if(Thesis_Final$MASQ_GDA, 98)
+
+# Mean center MASQ_GDA using scale()
+Thesis_Final$MASQ_GDA_centered <- scale(Thesis_Final$MASQ_GDA, center = TRUE, scale = FALSE)
+
+# Calculate the median for MASQ_GDA
+masq_gda_median <- median(Thesis_Final$MASQ_GDA, na.rm = TRUE)
+
+# MASQ_GDA Cutoff Binary
+Thesis_Final$MASQ_GDA_binary <- ifelse(Thesis_Final$MASQ_GDA < 15, 0, 1)
+
+
+
+#Merging MASQ_AA Anxiety Score
+Thesis_Final$MASQ_AA <- ifelse(!is.na(Thesis1$B4QMA_AA), Thesis1$B4QMA_AA, Thesis1$RA4QMA_AA)
+
+#Code 98 as Missing for MASQ_AA
+Thesis_Final$MASQ_AA<-na_if(Thesis_Final$MASQ_AA, 98)
+
+# Mean center MASQ_AA using scale()
+Thesis_Final$MASQ_AA_centered <- scale(Thesis_Final$MASQ_AA, center = TRUE, scale = FALSE)
+
+# Calculate the median for MASQ_AA
+masq_aa_median <- median(Thesis_Final$MASQ_AA, na.rm = TRUE)
+
+# MASQ_AA Cutoff Binary
+Thesis_Final$MASQ_AA_binary <- ifelse(Thesis_Final$MASQ_AA < 20, 0, 1)
+
+
+
+#Merging CIDI Anxiety scores
+Thesis_Final$CIDI_binary <- ifelse(!is.na(Thesis1$B1PANXTD ), Thesis1$B1PANXTD , Thesis1$RA1PANXTD )
 
 
 
 
 
-# Step 1: Filter data to include only individuals with non-missing COR_QA
-data_with_COR_QA <- Thesis_Final %>% filter(!is.na(COR_QA))
 
-# Step 2: Filter further to include only males (Sex == 1)
-males_with_COR_QA <- data_with_COR_QA %>% filter(Sex == 1)
+#Selecting only participants who completed Neuroscience Project
+Thesis_Final<-filter(Thesis_Final,!is.na(P5Age))
 
-# Step 3: Calculate the total number of individuals with non-missing COR_QA
-total_with_COR_QA <- nrow(data_with_COR_QA)
+#Remove M2ID
+Thesis_Final <- Thesis_Final %>% 
+  select(-c("M2ID"))
 
-# Step 4: Calculate the number of males with non-missing COR_QA
-total_males_with_COR_QA <- nrow(males_with_COR_QA)
+#Remove Other Cleaning
+Thesis_Final <- Thesis_Final %>% 
+  select(-c("ifelse..is.na.Thesis1.B5CNE...Thesis1.B5CNE..Thesis1.RA5CNE."))
 
-# Step 5: Calculate the percentage of males with non-missing COR_QA
-percentage_males_with_COR_QA <- (total_males_with_COR_QA / total_with_COR_QA) * 100
+#Recoding 8 as missing for COR 
+Thesis_Final <- Thesis_Final %>% 
+  mutate(across(starts_with("COR"), ~ if_else(COR_QA == 8, NA_real_, .)))
 
-# Print the result
-percentage_males_with_COR_QA
-
-
-# Step 1: Filter data to include only individuals with non-missing COR_QA
-data_with_COR_QA <- Thesis_Final %>% filter(!is.na(COR_QA))
-
-# Step 2: Filter data for BIPOC individuals (Race == 0)
-bipoc_with_COR_QA <- data_with_COR_QA %>% filter(Race == 0)
-
-# Step 3: Calculate the total number of individuals with non-missing COR_QA
-total_with_COR_QA <- nrow(data_with_COR_QA)
-
-# Step 4: Calculate the number of BIPOC individuals with non-missing COR_QA
-total_bipoc_with_COR_QA <- nrow(bipoc_with_COR_QA)
-
-# Step 5: Calculate the percentage of BIPOC individuals with non-missing COR_QA
-percentage_bipoc_with_COR_QA <- (total_bipoc_with_COR_QA / total_with_COR_QA) * 100
-
-# Print the result
-percentage_bipoc_with_COR_QA
+# Export to csv
+write.csv(Thesis_Final, "Thesis_Final_JAN25.csv")
 
 
-
-# Filter for participants who have values for COR_QA
-COR_QA_data <- Thesis_Final %>% 
-  filter(!is.na(COR_QA))
-
-# Calculate range, average, and SD for P5Age
-age_range <- range(COR_QA_data$P5Age, na.rm = TRUE)
-age_mean <- mean(COR_QA_data$P5Age, na.rm = TRUE)
-age_sd <- sd(COR_QA_data$P5Age, na.rm = TRUE)
-min_age <- min(COR_QA_data$P5Age, na.rm = TRUE)
-max_age <- max(COR_QA_data$P5Age, na.rm = TRUE)
-
-# Output the results
-age_range
-age_mean
-age_sd
-min_age
-max_age
-
-
+  
